@@ -1,6 +1,8 @@
 #include "neuron.h"
 #include "neural_functions.h"
 
+#include <pthread.h>
+
 #ifndef NET_H
 #define NET_H
 
@@ -48,6 +50,8 @@ typedef struct net {
   int output_layer_size;
 
   float learning_rate;
+
+  pthread_mutex_t lock;
 } net_t;
 
 extern int *duplicate_int_array(int *, int);

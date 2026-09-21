@@ -2,6 +2,7 @@
 #include "net.h"
 #include "neural_functions.h"
 
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -219,6 +220,10 @@ net_t *create_batch_net(net_t *net) {
 
   reset_batch_values(net_copy);
 
+  if (pthread_mutex_init(&net_copy->lock, NULL)) {
+    delete_net(net_copy);
+  }
+
   return net_copy;
 }
 
@@ -241,7 +246,7 @@ void reset_batch_values(net_t *net) {
 /*
  * adds the local gradient from one net, to the other.
  * only used for batch/mini-batch training. to should be
- * your batch neural net.
+ * your batch neural net. to MUST be a batch
  */
 
 void add_gradient_from(net_t *from, net_t *to) {
@@ -252,10 +257,18 @@ void add_gradient_from(net_t *from, net_t *to) {
     for (int j = 0; j < from->hidden_layers_sizes[i]; j++) {
       neuron_t *to_neuron = to_layer + j;
 
+      pthread_mutex_lock(&to->lock);
+
       to_neuron->local_gradient += from_layer[j].local_gradient;
 
+      pthread_mutex_unlock(&to->lock);
+
       for (int k = 0; k < to_neuron->previous_count; k++) {
+        pthread_mutex_lock(&to->lock);
+
         to_neuron->previous[k].y += from_layer[j].previous[k].y;
+
+        pthread_mutex_unlock(&to->lock);
       }
     }
   }

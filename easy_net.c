@@ -4,6 +4,7 @@
 #include "serial_net.h"
 #include "easy_net.h"
 
+#include <pthread.h>
 #include <stdlib.h>
 
 void create_easy_net(easy_net_t *easy_net,
@@ -72,22 +73,11 @@ void create_easy_net(easy_net_t *easy_net,
   }
 }
 
-void create_easy_batches(easy_net_t *easy_net, int count) {
-  easy_net->batches = malloc(sizeof(net_t *) * count);
-  for (int i = 0; i < count; i++) {
-    easy_net->batches[i] = create_batch_net(easy_net->net);
-    if (!easy_net->batches[i]) {
-      delete_easy_batches(easy_net);
-    };
-  }
+void create_easy_batch(easy_net_t *easy_net) {
+  easy_net->batch = create_batch_net(easy_net->net);
 }
 
-void delete_easy_batches(easy_net_t *easy_net) {
-  for (int i = 0; i < easy_net->batches_count; i++) {
-    delete_net(easy_net->batches[i]);
-    easy_net->batches[i] = NULL;
-  }
-
-  free(easy_net->batches);
-  easy_net->batches = NULL;
+void delete_easy_batch(easy_net_t *easy_net) {
+  free(easy_net->batch);
+  easy_net->batch = NULL;
 }

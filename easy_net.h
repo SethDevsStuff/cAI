@@ -3,15 +3,15 @@
 #include "neural_functions.h"
 #include "serial_net.h"
 
+#include <pthread.h>
+
 #ifndef EASY_NET_H
 #define EASY_NET_H
 
 
 typedef struct easy_net {
   net_t *net;
-  net_t **batches;
-
-  int batches_count;
+  net_t *batch;
 
   normal_e final_normal_training;
   normal_e final_normal_answer;
