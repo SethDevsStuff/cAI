@@ -532,3 +532,95 @@ void update_net_from_batch(net_t *net, net_t *batch, int count) {
     }
   }
 }
+
+net_t *create_mirror_net(net_t *net) {
+  // allocate memory for net struct
+  net_t *mirror_net = calloc(1, sizeof(net_t));
+  if (!mirror_net) goto cleanup;
+
+  *mirror_net = *net;
+
+  //mirror_net->hidden_layers_sizes = net->hidden_layers_sizes;
+
+  // allocate memory for input & output layers
+  mirror_net->input_layer = create_neurons(net->input_layer_size);
+  //mirror_net->input_layer_size = net->input_layer_size;
+  if ( !(mirror_net->input_layer) ) goto cleanup;
+
+  // # of neurons in output layer == # of neurons in last hidden layer
+  mirror_net->output_layer = create_neurons(
+    net->hidden_layers_sizes[net->hidden_layers_count - 1]
+  );
+  mirror_net->output_layer_size =
+    net->hidden_layers_sizes[net->hidden_layers_count - 1];
+  if ( !(mirror_net->output_layer) ) goto cleanup;
+
+  // allocate memory for array of ptrs to layers
+  mirror_net->hidden_layers = calloc(net->hidden_layers_count,
+                                     sizeof(neuron_t *));
+  if ( !(mirror_net->hidden_layers) ) goto cleanup;
+
+  // allocate memory for each individual layer
+  for (int i = 0; i < net->hidden_layers_count; i++) {
+    mirror_net->hidden_layers[i] =
+      create_neurons(net->hidden_layers_sizes[i]);
+    if ( !(mirror_net->hidden_layers[i]) ) goto cleanup;
+
+    // give values to each individual neuron in the layer
+    for (int j = 0; j < net->hidden_layers_sizes[i]; j++) {
+      neuron_t *neuron = mirror_net->hidden_layers[i] + j;
+      neuron_t *net_neuron = net->hidden_layers[i] + j;
+
+      *neuron = *net_neuron;
+
+      if (i == 0) {
+        // first hidden layer has input_layer_size weights
+        neuron->previous = mirror_net->input_layer;
+      }
+      else {
+        // number of weights of a node is equal to the number of nodes
+        // in the previous layer
+        neuron->previous = mirror_net->hidden_layers[i - 1];
+      }
+
+      if (i == net->hidden_layers_count - 1) {
+        // layer is last hidden layer
+        neuron->next = mirror_net->output_layer;
+      }
+      else {
+        neuron->next = mirror_net->hidden_layers[i + 1];
+      }
+    }
+  }
+
+  //mirror_net->hidden_layers_activations = net->hidden_layers_activations;
+  //mirror_net->hidden_layers_activations_d = net->hidden_layers_activations_d;
+
+  return mirror_net;
+
+
+cleanup:
+  if (mirror_net) {
+    delete_neurons(mirror_net->input_layer, mirror_net->input_layer_size);
+    delete_neurons(mirror_net->output_layer, mirror_net->output_layer_size);
+    if (mirror_net->hidden_layers) goto clean_layers;
+  }
+  free(mirror_net);
+
+  return NULL;
+
+clean_layers:
+  for (int i = 0; i < net->hidden_layers_count; i++) {
+    delete_neurons(mirror_net->hidden_layers[i],
+                   mirror_net->hidden_layers_sizes[i]);
+    mirror_net->hidden_layers[i] = NULL;
+  }
+  free(mirror_net->hidden_layers_sizes);
+  mirror_net->hidden_layers_sizes = NULL;
+  free(mirror_net->hidden_layers);
+  mirror_net->hidden_layers = NULL;
+
+  free(mirror_net);
+
+  return NULL;
+}

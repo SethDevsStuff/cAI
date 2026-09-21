@@ -101,7 +101,7 @@ float cross_entropy(float expected, float actual) {
 
 float binary_cross_entropy(float expected, float actual) {
   float n = expected * logf(actual);
-  n += (1 - expected) * logf(1- actual);
+  n += (1 - expected) * logf(1 - actual);
   n *= -1;
 
   return n;

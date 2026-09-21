@@ -85,5 +85,6 @@ extern void layer_back_prop(neuron_t *, int, neuron_t *, int);
 extern void full_back_prop(net_t *net, float *);
 extern void update_net(net_t *);
 extern void update_net_from_batch(net_t *, net_t *, int);
+extern net_t *create_mirror_net(net_t *);
 
 #endif

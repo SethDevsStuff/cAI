@@ -53,6 +53,8 @@ int main() {
   expecteds[0] = inputs[0] * inputs[0];
   inputs[0] /= 100;
 
+  net_t *mirror = create_mirror_net(net);
+
   float *output = input_to_output(net, inputs);
   output[0] *= 100;
   printf("input: %f | output: %f | expected: %f\ndifference:%f\n",
