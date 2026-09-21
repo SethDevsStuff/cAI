@@ -540,6 +540,12 @@ net_t *create_mirror_net(net_t *net) {
 
   *mirror_net = *net;
 
+  // prevents layers in net from being freed if mirror_net
+  // layers fail to allocate
+  mirror_net->input_layer = NULL;
+  mirror_net->output_layer = NULL;
+  mirror_net->hidden_layers = NULL;
+
   //mirror_net->hidden_layers_sizes = net->hidden_layers_sizes;
 
   // allocate memory for input & output layers
@@ -622,5 +628,71 @@ clean_layers:
 
   free(mirror_net);
 
+  return NULL;
+}
+
+void update_mirror(net_t *net, net_t *mirror) {
+  for (int i = 0; i < net->hidden_layers_count; i++) {
+    for (int j = 0; j < net->hidden_layers_sizes[i]; j++) {
+      neuron_t *mirror_neuron = mirror->hidden_layers[i] + j;
+      neuron_t *net_neuron = net->hidden_layers[i] + j;
+
+      mirror_neuron->bias = net_neuron->bias;
+    }
+  }
+}
+
+/*
+ * this is the function that gets run on a thread
+*/
+void *thread_function(void *ptr) {
+  thread_wrapper_t *tw = (thread_wrapper_t *) ptr;
+  net_t *mirror = tw->mirror;
+  net_t *batch = tw->batch;
+  float **inputs = tw->inputs;
+  float **expecteds = tw->expecteds;
+  int inputs_size = tw->inputs_size;
+
+  // loop through inputs
+  for (int i = 0; i < inputs_size; i++) {
+    input_in_net(mirror, inputs[i]);
+    calculate_hidden(mirror);
+    push_to_output_training(mirror);
+    full_back_prop(mirror, expecteds[i]);
+    add_gradient_from(mirror, batch);
+  }
+
+  return NULL;
+}
+
+/*
+ * count is the # of inputs / outputs, neurons
+ * is the number of neurons in either the
+ * input or output layer, depending on which
+ * you are using the array for.
+*/
+float **create_batch_arr(int count, int neurons) {
+  float **arr = calloc(count, sizeof(float *));
+  if (!arr) return NULL;
+  for (int i = 0; i < count; i++) {
+    arr[i] = calloc(neurons, sizeof(float));
+    if (!(arr[i])) goto cleanup;
+  }
+
+  return arr;
+
+cleanup:
+  if (arr) {
+    for (int i = 0; i < count; i++) {
+      if (arr[i]) {
+        free(arr[i]);
+        arr[i] = NULL;
+      }
+      else {
+        break;
+      }
+    }
+    free(arr);
+  }
   return NULL;
 }

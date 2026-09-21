@@ -54,6 +54,14 @@ typedef struct net {
   pthread_mutex_t lock;
 } net_t;
 
+typedef struct thread_wrapper {
+  net_t *mirror;
+  net_t *batch;
+  float **inputs;
+  float **expecteds;
+  int inputs_size;
+} thread_wrapper_t;
+
 extern int *duplicate_int_array(int *, int);
 extern activation_function_t *duplicate_activations_array(
     activation_function_t *, int);
@@ -86,5 +94,8 @@ extern void full_back_prop(net_t *net, float *);
 extern void update_net(net_t *);
 extern void update_net_from_batch(net_t *, net_t *, int);
 extern net_t *create_mirror_net(net_t *);
+extern void update_mirror(net_t *, net_t *);
+extern void *thread_function(void *);
+extern float **create_batch_arr(int, int);
 
 #endif
