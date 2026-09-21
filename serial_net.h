@@ -91,7 +91,7 @@ void compiled_to_serial_net(serial_net_compiled_t *,
 void write_compiled_to_file(FILE *, serial_net_compiled_t *);
 normal_function_t get_normal_function(normal_e);
 loss_function_t get_loss_function(loss_e);
-loss_normal_combined_d_t get_loss_normal_combined_t(loss_e, normal_e);
+loss_normal_combined_d_t get_loss_normal_combined_d(loss_e, normal_e);
 activation_function_t get_activation_function(activation_e);
 activation_function_d_t get_activation_function_d(activation_e);
 weight_init_function_t get_weight_init_function(activation_e);

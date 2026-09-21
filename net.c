@@ -1,5 +1,6 @@
 #include "neuron.h"
 #include "net.h"
+#include "neural_functions.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +8,34 @@
 
 int *duplicate_int_array(int *arr, int n){
   int *arr_copy = malloc(n * sizeof(int));
+  if (!arr_copy) return NULL;
+
+  for (int i = 0; i < n; i++) {
+    arr_copy[i] = arr[i];
+  }
+
+  return arr_copy;
+}
+
+activation_function_t *duplicate_activations_array(
+  activation_function_t *arr,
+  int n){
+
+  activation_function_t *arr_copy = malloc(n * sizeof(*arr_copy));
+  if (!arr_copy) return NULL;
+
+  for (int i = 0; i < n; i++) {
+    arr_copy[i] = arr[i];
+  }
+
+  return arr_copy;
+}
+
+activation_function_d_t *duplicate_activations_d_array(
+  activation_function_d_t *arr,
+  int n){
+
+  activation_function_d_t *arr_copy = malloc(n * sizeof(*arr_copy));
   if (!arr_copy) return NULL;
 
   for (int i = 0; i < n; i++) {
@@ -110,8 +139,14 @@ net_t *create_net(int hidden_layers_count, int *hidden_layers_sizes,
   net->average_across_nodes = average_across_nodes;
   net->learning_rate = learning_rate;
 
-  net->hidden_layers_activations = hidden_layers_activations;
-  net->hidden_layers_activations_d = hidden_layers_activations_d;
+  net->hidden_layers_activations = duplicate_activations_array(
+    hidden_layers_activations,
+    hidden_layers_count
+  );
+  net->hidden_layers_activations_d = duplicate_activations_d_array(
+    hidden_layers_activations_d,
+    hidden_layers_count
+  );
 
   return net;
 
@@ -120,6 +155,10 @@ cleanup:
   if (net) {
     delete_neurons(net->input_layer, net->input_layer_size);
     delete_neurons(net->output_layer, net->output_layer_size);
+    if (net->hidden_layers_activations)
+      free(net->hidden_layers_activations);
+    if (net->hidden_layers_activations_d)
+      free(net->hidden_layers_activations_d);
     if (net->hidden_layers) goto clean_layers;
   }
   free(net);
@@ -153,6 +192,13 @@ void delete_net(net_t *net) {
 
   free(net->hidden_layers);
   net->hidden_layers = NULL;
+
+  free(net->hidden_layers_activations);
+  net->hidden_layers_activations = NULL;
+
+  free(net->hidden_layers_activations_d);
+  net->hidden_layers_activations_d = NULL;
+  
 
   free(net);
 }

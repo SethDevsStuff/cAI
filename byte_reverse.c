@@ -82,7 +82,7 @@ int main() {
                           0.05,
                           1);
   net_t *batch = create_batch_net(net);
-  int batch_size = 1;
+  int batch_size = 4;
 
   init_bias(net, 0.1);
   init_weights(net, weights);

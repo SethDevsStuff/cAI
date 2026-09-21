@@ -9,7 +9,9 @@
 
 typedef struct easy_net {
   net_t *net;
-  net_t *batch;
+  net_t **batches;
+
+  int batches_count;
 
   normal_e final_normal_training;
   normal_e final_normal_answer;

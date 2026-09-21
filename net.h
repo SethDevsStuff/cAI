@@ -1,4 +1,5 @@
 #include "neuron.h"
+#include "neural_functions.h"
 
 #ifndef NET_H
 #define NET_H
@@ -50,6 +51,10 @@ typedef struct net {
 } net_t;
 
 extern int *duplicate_int_array(int *, int);
+extern activation_function_t *duplicate_activations_array(
+    activation_function_t *, int);
+extern activation_function_d_t *duplicate_activations_d_array(
+    activation_function_d_t *, int);
 extern net_t *create_net(int, int *, float (**)(float),
                          float (**)(float, float),
                          float (*)(float), int,
