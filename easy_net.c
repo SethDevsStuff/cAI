@@ -44,7 +44,7 @@ void create_easy_net(easy_net_t *easy_net,
 
   float (*loss)(float, float) = get_loss_function(loss_f_e);
   float (*loss_normal_combined_d)(float, float) = 
-    get_loss_normal_combined_d(loss_f_e, final_normal_answer_e);
+    get_loss_normal_combined_d(loss_f_e, final_normal_training_e);
 
   easy_net->net = create_net(hidden_layers_count, hidden_layers_sizes,
                              hidden_layers_activations,
@@ -178,7 +178,7 @@ void train_batch_easy(easy_net_t *easy_net, float **inputs,
     inputs_head = inputs_head + tw->inputs_size;
     expecteds_head = expecteds_head + tw->inputs_size;
 
-    pthread_create(&tw->thread, NULL, &thread_function, tw);
+    int ret = pthread_create(&tw->thread, NULL, &thread_function, tw);
   }
 
   for (int i = 0; i < easy_net->thread_count; i++) {
@@ -186,6 +186,7 @@ void train_batch_easy(easy_net_t *easy_net, float **inputs,
 
     pthread_join(tw->thread, NULL);
   }
+  fflush(NULL);
   /*
   printf("g_batch layer 0 neuron 0 grad: %f\n", 
          easy_net->batch->hidden_layers[0][0].weights[0]);

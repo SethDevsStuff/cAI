@@ -1,17 +1,31 @@
 #include "neuron.h"
 #include "net.h"
 #include "neural_functions.h"
+#include "easy_net.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 #define TRAINING_PATH "./mnist_train.csv"
+#define TEST_PATH "./mnist_test.csv"
 
+void create_expected(int number, float expected[10]) {
+  for (int i = 0; i < 10; i++) {
+    if (i == number) {
+      expected[i] = 1.0;
+    }
+    else {
+      expected[i] = 0.0;
+    }
+  }
+}
 
-float normalize_pixel(float n) {
-  float max = 255;
-
-  return n / 255;
+int create_output(float output[10]) {
+  for (int i = 0; i < 10; i++) {
+    if (output[i] > 0.9) return i;
+  }
+  return -1;
 }
 
 /*
@@ -25,7 +39,7 @@ void read_mnist_line(FILE *file_ptr, float arr[784], int *number) {
   for (int i = 0; i < 784; i++) {
     int n = 0;
     fscanf(file_ptr, "%d,", &n);
-    arr[i] = (float) n;
+    arr[i] = n / 255.0;
   }
 
   fscanf(file_ptr, "%*c%*c"); // delete \r\n from line
@@ -34,56 +48,78 @@ void read_mnist_line(FILE *file_ptr, float arr[784], int *number) {
 int main() {
   FILE *training_ptr = fopen(TRAINING_PATH, "r");
   if (!training_ptr) goto cleanup;
+  FILE *test_ptr = fopen(TEST_PATH, "r");
+  if (!test_ptr) goto cleanup;
 
-  int layer_sizes[] = {1024, 512, 128, 10};
-  float (*activations[])(float) = {&sigmoid, &sigmoid, &sigmoid, &identity};
-  float (*activations_d[])(float, float) = {&sigmoid_d, &sigmoid_d,
-                                            &sigmoid_d, &identity_d};
+  int epochs = 4;
+  int batch_size = 50;
+  int thread_count = 5;
+  int training_size = 5000;
 
-  float (*weights[])(int, int) = {&get_glorot, &get_glorot, &get_glorot,
-                                  &get_glorot};
+  easy_net_t easy_net = { 0 };
 
-  net_t *net = create_net(4, layer_sizes, activations, activations_d,
-                          &normalize_pixel,
-                          784,
-                          &softmax, &softmax,
-                          &cross_entropy,
-                          &cross_softmax_d,
-                          0.001,
-                          0);
-  net_t *batch = create_batch_net(net);
-  init_bias(net, 0);
-  init_weights(net, weights);
+  int layer_count = 3;
+  int layer_sizes[] = {1024, 512, 10};
+  int input_layer_size = 784;
+  activation_e activations[] = {RELU, RELU, IDENTITY};
 
-  int correct = 0;
-  float inputs[784] = { 0 };
-  float expecteds[10] = { 0 };
+  create_easy_net(&easy_net, layer_count, layer_sizes, input_layer_size,
+                  activations, SOFTMAX_N, ARGMAX_N, IDENTITY,
+                  CROSS_ENTROPY, 0.16, 0);
+  init_bias_easy(&easy_net, 0.1);
+  init_weights_easy(&easy_net);
 
-  for (int i = 0; i < 1; i++) {
-    for (int i = 0; i < 1000; i++) {
-      read_mnist_line(training_ptr, inputs, &correct);
+  create_easy_batch(&easy_net);
+  prepare_threads_easy(&easy_net, thread_count);
 
-      // reset expecteds array
-      for (int i = 0; i < 10; i++) {
-        expecteds[i] = 0.0;
+  int number = 0;
+  float **inputs = create_batch_arr(batch_size, input_layer_size);
+  float **expecteds = create_batch_arr(batch_size, 10);
+
+  int trained_inputs = 0;
+
+  // -------------- training ------------
+  for (int i = 0; i < epochs; i++) {
+
+    while (trained_inputs < training_size) {
+      for (int j = 0; j < batch_size; j++) {
+        read_mnist_line(training_ptr, inputs[j], &number);
+        create_expected(number, expecteds[j]);
       }
-      expecteds[correct] = 1.0;
+      train_batch_easy(&easy_net, inputs, expecteds, batch_size);
+      trained_inputs += batch_size;
+    }
+    fseek(training_ptr, 0, SEEK_SET);
+    trained_inputs = 0;
+  }
 
-      input_in_net(net, inputs);
-      calculate_hidden(net);
-      push_to_output_training(net);
-      float loss = calculate_total_loss(net, expecteds);
-      full_back_prop(net, expecteds);
-      update_net(net);
+  // --------------- testing ------------
+  int test_size = 200;
+  int correct = 0;
+  for (int i = 0; i < test_size; i++) {
+    read_mnist_line(test_ptr, inputs[0], &number);
 
-      printf("%f\n", loss);
+    float *outputs = input_to_output(easy_net.net, inputs[0]);
+    int output_num = create_output(outputs);
+
+    printf("expected: %d | output: %d\n", number, output_num);
+
+    if (output_num == number) {
+      printf("CORRECT!\n");
+      correct++;
+    }
+    else {
+      printf("INCORRECT :((\n");
     }
 
-    printf("epoch %d\n", i);
+    free(outputs);
+    outputs = NULL;
   }
+  printf("You scored %d / %d = %f\n", correct, test_size,
+         ((float)correct) / test_size);
 
 cleanup:
   if (training_ptr) fclose(training_ptr);
-  if (net) delete_net(net);
+  if (test_ptr) fclose(test_ptr);
   return 0;
 }

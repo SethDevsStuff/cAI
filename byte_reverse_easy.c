@@ -72,13 +72,13 @@ int main() {
   int input_layer_size = 8;
   activation_e activations[] = {LEAKY_RELU, LEAKY_RELU, IDENTITY};
 
-  int epochs = 100;
+  int epochs = 1000;
   int batch_size = 16;
   int thread_count = 4;
 
   create_easy_net(&easy_net, layer_count, layer_sizes, input_layer_size,
                   activations, SIGMOID_N, SIGMOID_N, IDENTITY,
-                  BINARY_CROSS_ENTROPY, 0.05, 1);
+                  BINARY_CROSS_ENTROPY, 0.08, 1);
   init_bias_easy(&easy_net, 0.1);
   init_weights_easy(&easy_net);
 
@@ -96,9 +96,7 @@ int main() {
       char_to_float_bits(c, inputs[j]);
       char_to_float_bits(reverse, expecteds[j]);
     }
-    for (int j = 0; j < 20; j++) {
-      train_batch_easy(&easy_net, inputs, expecteds, batch_size);
-    }
+    train_batch_easy(&easy_net, inputs, expecteds, batch_size);
   }
 
   

@@ -5,7 +5,7 @@ SRC = net.c neuron.c neural_functions.c easy_net.c
 
 TARGET = a.out
 
-all: byte_reverse_easy
+all: mnist
 
 
 % : $(SRC) %.c
