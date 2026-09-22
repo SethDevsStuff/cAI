@@ -33,6 +33,11 @@ void delete_neurons(neuron_t *neurons, int neuron_count) {
   free(neurons);
 }
 
+void delete_mirror_neurons(neuron_t *neurons, int neuron_count) {
+  if (!neurons) return;
+  free(neurons);
+}
+
 void run_activation(neuron_t *n) {
   n->y = n->activation(n->x);
 }

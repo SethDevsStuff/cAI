@@ -25,6 +25,7 @@ typedef struct neuron {
 extern neuron_t *create_neurons(int);
 extern float *create_weights(int);
 extern void delete_neurons(neuron_t *, int);
+extern void delete_mirror_neurons(neuron_t *, int);
 extern void run_activation(neuron_t *);
 extern void run_layer_activation(neuron_t *, int);
 extern void calculate_x(neuron_t *);

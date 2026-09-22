@@ -1,9 +1,11 @@
 CC = gcc
-CFLAGS = -lm
+CFLAGS = -lm -pthread
 
-SRC = net.c neuron.c neural_functions.c
+SRC = net.c neuron.c neural_functions.c easy_net.c
 
 TARGET = a.out
+
+all: byte_reverse_easy
 
 
 % : $(SRC) %.c

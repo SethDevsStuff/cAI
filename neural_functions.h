@@ -3,6 +3,27 @@
 #ifndef NEURAL_FUNCTIONS_H
 #define NEURAL_FUNCTIONS_H
 
+typedef enum normal {
+  IDENTITY_N,
+  SIGMOID_N,
+  SOFTMAX_N,
+  ARGMAX_N
+} normal_e;
+
+typedef enum loss {
+  SQUARED_ERROR,
+  CROSS_ENTROPY,
+  BINARY_CROSS_ENTROPY
+} loss_e;
+
+typedef enum activation {
+  IDENTITY,
+  SIGMOID,
+  TAN_H,
+  RELU,
+  LEAKY_RELU
+} activation_e;
+
 typedef float (*activation_function_t)(float);
 typedef float (*activation_function_d_t)(float, float);
 
@@ -47,4 +68,10 @@ extern float random_f(float, float);
 extern float get_glorot(int, int); // use linear, tanh, sigmoid
 extern float get_msra(int, int); // use ReLU, LeakyReLU
 
+normal_function_t get_normal_function(normal_e);
+loss_function_t get_loss_function(loss_e);
+loss_normal_combined_d_t get_loss_normal_combined_d(loss_e, normal_e);
+activation_function_t get_activation_function(activation_e);
+activation_function_d_t get_activation_function_d(activation_e);
+weight_init_function_t get_weight_init_function(activation_e);
 #endif

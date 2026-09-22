@@ -59,8 +59,6 @@ net_t *create_net(int hidden_layers_count, int *hidden_layers_sizes,
                   int average_across_nodes) {
   if (hidden_layers_count <= 0) return NULL;
 
-  srand(time(NULL));
-
   // allocate memory for net struct
   net_t *net = calloc(1, sizeof(net_t));
   if (!net) goto cleanup;
@@ -210,7 +208,7 @@ net_t *create_batch_net(net_t *net) {
                                net->hidden_layers_activations,
                                net->hidden_layers_activations_d,
                                net->start_normal,
-                               net->output_layer_size,
+                               net->input_layer_size,
                                net->final_normal_training,
                                net->final_normal_answer,
                                net->loss,
@@ -237,7 +235,7 @@ void reset_batch_values(net_t *net) {
       neuron->local_gradient = 0.0;
 
       for (int k = 0; k < neuron->previous_count; k++) {
-        neuron->previous[k].y = 0.0;
+        neuron->weights[k] = 0.0;
       }
     }
   }
@@ -249,7 +247,8 @@ void reset_batch_values(net_t *net) {
  * your batch neural net. to MUST be a batch
  */
 
-void add_gradient_from(net_t *from, net_t *to) {
+void add_gradient_to_batch(net_t *from, net_t *to) {
+  pthread_mutex_lock(&to->lock);
   for (int i = 0; i < from->hidden_layers_count; i++) {
     neuron_t *from_layer = from->hidden_layers[i];
     neuron_t *to_layer = to->hidden_layers[i];
@@ -257,21 +256,36 @@ void add_gradient_from(net_t *from, net_t *to) {
     for (int j = 0; j < from->hidden_layers_sizes[i]; j++) {
       neuron_t *to_neuron = to_layer + j;
 
-      pthread_mutex_lock(&to->lock);
-
       to_neuron->local_gradient += from_layer[j].local_gradient;
 
-      pthread_mutex_unlock(&to->lock);
-
       for (int k = 0; k < to_neuron->previous_count; k++) {
-        pthread_mutex_lock(&to->lock);
-
-        to_neuron->previous[k].y += from_layer[j].previous[k].y;
-
-        pthread_mutex_unlock(&to->lock);
+        to_neuron->weights[k] += from_layer[j].previous[k].y *
+          from_layer[j].local_gradient;
       }
     }
   }
+  pthread_mutex_unlock(&to->lock);
+}
+
+void add_batch_to_batch(net_t *from, net_t *to) {
+  pthread_mutex_lock(&to->lock);
+  for (int i = 0; i < from->hidden_layers_count; i++) {
+    neuron_t *from_layer = from->hidden_layers[i];
+    neuron_t *to_layer = to->hidden_layers[i];
+
+    for (int j = 0; j < from->hidden_layers_sizes[i]; j++) {
+      neuron_t *to_neuron = to_layer + j;
+      //printf("%f\n", to_neuron->local_gradient);
+
+      to_neuron->local_gradient += from_layer[j].local_gradient;
+
+      for (int k = 0; k < to_neuron->previous_count; k++) {
+        //printf("%f\n", from_layer[j].previous[k].y);
+        to_neuron->weights[k] += from_layer[j].weights[k];
+      }
+    }
+  }
+  pthread_mutex_unlock(&to->lock);
 }
 
 void init_bias(net_t *net, float val) {
@@ -367,8 +381,11 @@ float calculate_total_loss(net_t *net, float *expecteds) {
 
   neuron_t *output = net->output_layer;
 
+  //printf("---------\n");
   for (int i = 0; i < n; i++) {
-    total += calculate_loss(net, expecteds[i], output[i].y);
+    float sub = calculate_loss(net, expecteds[i], output[i].y);
+    total += sub;
+    //printf("%f %f\n", total, sub);
   }
 
   if (net->average_across_nodes) {
@@ -519,15 +536,13 @@ void update_net_from_batch(net_t *net, net_t *batch, int count) {
       neuron_t *neuron = net_layer + j;
 
       float gradient_rate = net->learning_rate *
-                            batch_layer[j].local_gradient;
-      gradient_rate /= count;
+        batch_layer[j].local_gradient / count;
 
       neuron->bias -= gradient_rate;
 
       for (int k = 0; k < neuron->previous_count; k++) {
-        //printf("%f\n", gradient_rate * batch_layer[j].previous[k].y);
-        neuron->weights[k] -= gradient_rate * batch_layer[j].previous[k].y /
-                              count;
+        neuron->weights[k] -= net->learning_rate * 
+          batch_layer[j].weights[k] / count;
       }
     }
   }
@@ -621,14 +636,29 @@ clean_layers:
                    mirror_net->hidden_layers_sizes[i]);
     mirror_net->hidden_layers[i] = NULL;
   }
-  free(mirror_net->hidden_layers_sizes);
-  mirror_net->hidden_layers_sizes = NULL;
+  //free(mirror_net->hidden_layers_sizes);
+  //mirror_net->hidden_layers_sizes = NULL;
   free(mirror_net->hidden_layers);
   mirror_net->hidden_layers = NULL;
 
   free(mirror_net);
 
   return NULL;
+}
+
+void delete_mirror_net(net_t *mirror) {
+  delete_neurons(mirror->input_layer, mirror->input_layer_size);
+  delete_neurons(mirror->output_layer, mirror->output_layer_size);
+
+  for (int i = 0; i < mirror->hidden_layers_count; i++) {
+    delete_mirror_neurons(mirror->hidden_layers[i],
+                   mirror->hidden_layers_sizes[i]);
+    mirror->hidden_layers[i] = NULL;
+  }
+
+  free(mirror->hidden_layers);
+
+  free(mirror);
 }
 
 void update_mirror(net_t *net, net_t *mirror) {
@@ -645,6 +675,8 @@ void update_mirror(net_t *net, net_t *mirror) {
 /*
  * this is the function that gets run on a thread
 */
+
+/*
 void *thread_function(void *ptr) {
   thread_wrapper_t *tw = (thread_wrapper_t *) ptr;
   net_t *mirror = tw->mirror;
@@ -658,9 +690,38 @@ void *thread_function(void *ptr) {
     input_in_net(mirror, inputs[i]);
     calculate_hidden(mirror);
     push_to_output_training(mirror);
+    float loss = calculate_total_loss(mirror, expecteds[i]);
     full_back_prop(mirror, expecteds[i]);
-    add_gradient_from(mirror, batch);
+    add_gradient_to_batch(mirror, batch);
   }
+
+  return NULL;
+}
+*/
+
+void *thread_function(void *ptr) {
+  thread_wrapper_t *tw = (thread_wrapper_t *) ptr;
+  net_t *mirror = tw->mirror;
+  net_t *g_batch = tw->batch;
+  net_t *batch = create_batch_net(g_batch);
+  float **inputs = tw->inputs;
+  float **expecteds = tw->expecteds;
+  int inputs_size = tw->inputs_size;
+
+  // loop through inputs
+  for (int i = 0; i < inputs_size; i++) {
+    input_in_net(mirror, inputs[i]);
+    calculate_hidden(mirror);
+    push_to_output_training(mirror);
+    //float loss = calculate_total_loss(mirror, expecteds[i]);
+    //printf("%f\n", loss);
+    full_back_prop(mirror, expecteds[i]);
+    add_gradient_to_batch(mirror, batch);
+  }
+
+  add_batch_to_batch(batch, g_batch);
+
+  delete_net(batch);
 
   return NULL;
 }

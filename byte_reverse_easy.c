@@ -1,6 +1,5 @@
-#include "neuron.h"
-#include "net.h"
 #include "neural_functions.h"
+#include "easy_net.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -66,63 +65,54 @@ void print_byte_binary(unsigned char a) {
 }
 
 int main() {
+  srand(time(NULL));
+  easy_net_t easy_net = { 0 };
+  int layer_count = 3;
   int layer_sizes[] = {32, 32, 8};
-  float (*activations[])(float) = {&leaky_relu, &leaky_relu, &identity};
-  float (*activations_d[])(float, float) = {&leaky_relu_d, &leaky_relu_d,
-                                            &identity_d};
+  int input_layer_size = 8;
+  activation_e activations[] = {LEAKY_RELU, LEAKY_RELU, IDENTITY};
 
-  float (*weights[])(int, int) = {&get_msra, &get_msra, &get_glorot};
+  int epochs = 100;
+  int batch_size = 16;
+  int thread_count = 4;
 
-  net_t *net = create_net(3, layer_sizes, activations, activations_d,
-                          &identity,
-                          8,
-                          &sigmoid_normal, &sigmoid_normal,
-                          &binary_cross_entropy,
-                          &binary_cross_sigmoid_d,
-                          0.005,
-                          1);
-  net_t *batch = create_batch_net(net);
-  int batch_size = 4;
+  create_easy_net(&easy_net, layer_count, layer_sizes, input_layer_size,
+                  activations, SIGMOID_N, SIGMOID_N, IDENTITY,
+                  BINARY_CROSS_ENTROPY, 0.05, 1);
+  init_bias_easy(&easy_net, 0.1);
+  init_weights_easy(&easy_net);
 
-  init_bias(net, 0.1);
-  init_weights(net, weights);
+  create_easy_batch(&easy_net);
+  prepare_threads_easy(&easy_net, thread_count);
 
-  float inputs[8] = { 0 };
-  float expecteds[8] = { 0 };
+  float **inputs = create_batch_arr(batch_size, input_layer_size);
+  float **expecteds = create_batch_arr(batch_size, 8);
 
-  for (int i = 0; i < 3000; i++) {
+  for (int i = 0; i < epochs; i++) {
     for (int j = 0; j < batch_size; j++) {
       unsigned char c = (unsigned char) rand();
       unsigned char reverse = reverse_bits(c);
 
-      char_to_float_bits(c, inputs);
-      char_to_float_bits(reverse, expecteds);
-
-
-      input_in_net(net, inputs);
-      calculate_hidden(net);
-      push_to_output_training(net);
-      //float loss = calculate_total_loss(net, expecteds);
-      full_back_prop(net, expecteds);
-      //update_net(net);
-      //printf("loss: %f\n", loss);
-      add_gradient_to_batch(net, batch);
+      char_to_float_bits(c, inputs[j]);
+      char_to_float_bits(reverse, expecteds[j]);
     }
-    update_net_from_batch(net, batch, batch_size);
-    reset_batch_values(batch);
+    for (int j = 0; j < 20; j++) {
+      train_batch_easy(&easy_net, inputs, expecteds, batch_size);
+    }
   }
 
-
+  
   // -------------- testing ------------------
   int correct = 0;
+  float test_inputs[8] = { 0 };
 
   for (int i = 0; i < 256; i++) {
     unsigned char c = (unsigned char) i;
     unsigned char reverse = reverse_bits(c);
 
-    char_to_float_bits(c, inputs);
+    char_to_float_bits(c, test_inputs);
 
-    float *outputs = input_to_output(net, inputs);
+    float *outputs = input_to_output(easy_net.net, test_inputs);
 
     normalize_float_bits(outputs);
 
@@ -144,6 +134,8 @@ int main() {
     else {
       printf("INCORRECT\n");
     }
+    free(outputs);
+    outputs = NULL;
   }
 
   printf("scored %d / 256 = %f\n", correct, 100.0 * correct / 256.0);
