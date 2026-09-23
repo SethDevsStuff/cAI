@@ -45,6 +45,7 @@ void read_mnist_line(FILE *file_ptr, float arr[784], int *number) {
   fscanf(file_ptr, "%*c%*c"); // delete \r\n from line
 }
 
+/*
 int main() {
   FILE *training_ptr = fopen(TRAINING_PATH, "r");
   if (!training_ptr) goto cleanup;
@@ -123,3 +124,4 @@ cleanup:
   if (test_ptr) fclose(test_ptr);
   return 0;
 }
+*/

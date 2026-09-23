@@ -13,7 +13,7 @@
  * not itself get saved to the file however.
  */
 
-typedef struct serial_net_compiled {
+typedef struct net_compiled {
   normal_e final_normal_training;
   normal_e final_normal_answer;
 
@@ -27,9 +27,11 @@ typedef struct serial_net_compiled {
   int *hidden_layers_sizes;
   int hidden_layers_count;
 
+  int input_layer_size;
+
   int average_across_nodes;
   float learning_rate;
-} serial_net_compiled_t;
+} net_compiled_t;
 
 /*
  * this is the header that actually gets saved to the
@@ -45,6 +47,8 @@ typedef struct serial_net {
   loss_e loss;
 
   int hidden_layers_count;
+
+  int input_layer_size;
 
   int average_across_nodes;
   float learning_rate;
@@ -65,8 +69,9 @@ typedef struct serial_net {
  * ---------------------------
  */
 
-void compiled_to_serial_net(serial_net_compiled_t *,
+extern void compiled_to_serial_net(net_compiled_t *,
                             serial_net_t *);
-void write_compiled_to_file(FILE *, serial_net_compiled_t *);
+extern void serial_to_compiled(serial_net_t *, net_compiled_t *);
+extern void write_compiled_to_file(FILE *, net_compiled_t *);
 
 #endif

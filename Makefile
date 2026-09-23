@@ -1,18 +1,15 @@
 CC = gcc
 CFLAGS = -lm -pthread
 
-SRC = net.c neuron.c neural_functions.c easy_net.c
+SRC = net.c neuron.c neural_functions.c serial_net.c easy_net.c mnist.c
 
-TARGET = a.out
+TARGET = mnist_create mnist_train mnist_test
 
-all: mnist
+all: $(TARGET)
 
 
 % : $(SRC) %.c
-	$(CC) $(CFLAGS) -o $@ $^
-
-$(TARGET) : $(SRC)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
+	$(CC) -o $@ $^ $(CFLAGS)
 
 ./%.o : ./%.c
 	$(CC) -c -o $@ $<

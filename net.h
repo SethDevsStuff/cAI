@@ -89,7 +89,7 @@ extern float calculate_loss(net_t *, float, float);
 extern float calculate_total_loss(net_t *, float *);
 extern void input_in_net(net_t *, float *);
 extern void calculate_hidden(net_t *);
-extern float *input_to_output(net_t *, float *);
+extern void input_to_output(net_t *, float *, float *);
 extern void first_back_prop(net_t *, float *);
 extern void layer_back_prop(neuron_t *, int, neuron_t *, int);
 extern void full_back_prop(net_t *net, float *);

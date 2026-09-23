@@ -416,19 +416,14 @@ void calculate_hidden(net_t *net) {
   }
 }
 
-float *input_to_output(net_t *net, float *inputs) {
+void input_to_output(net_t *net, float *inputs, float *outputs) {
   input_in_net(net, inputs);
   calculate_hidden(net);
   push_to_output_answer(net);
 
-  float *outputs = malloc(net->output_layer_size * sizeof(float));
-  if (!outputs) return NULL;
-
   for (int i = 0; i < net->output_layer_size; i++) {
     outputs[i] = net->output_layer[i].y;
   }
-
-  return outputs;
 }
 
 void first_back_prop(net_t *net, float *expecteds) {

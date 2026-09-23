@@ -193,3 +193,80 @@ void train_batch_easy(easy_net_t *easy_net, float **inputs,
   */
   update_net_from_batch(easy_net->net, easy_net->batch, batch_size);
 }
+
+void compiled_from_easy(net_compiled_t *net_c, easy_net_t *easy_net) {
+  net_c->final_normal_training = easy_net->final_normal_training;
+  net_c->final_normal_answer = easy_net->final_normal_answer;
+
+  net_c->start_normal = easy_net->start_normal;
+
+  net_c->loss = easy_net->loss;
+
+  net_c->hidden_layers_activations = easy_net->hidden_layers_activations;
+
+  net_c->hidden_layers = easy_net->net->hidden_layers;
+  net_c->hidden_layers_sizes = easy_net->net->hidden_layers_sizes;
+  net_c->hidden_layers_count = easy_net->net->hidden_layers_count;
+
+  net_c->input_layer_size = easy_net->net->input_layer_size;
+
+  net_c->average_across_nodes = easy_net->net->average_across_nodes;
+  net_c->learning_rate = easy_net->net->learning_rate;
+}
+
+void write_easy_to_file(FILE *file_ptr, easy_net_t *easy_net) {
+  net_compiled_t net_c = { 0 };
+  compiled_from_easy(&net_c, easy_net);
+  fseek(file_ptr, 0, SEEK_SET);
+
+  write_compiled_to_file(file_ptr, &net_c);
+}
+
+void read_file_to_easy(FILE *file_ptr, easy_net_t *easy_net) {
+  serial_net_t s_net = { 0 };
+
+
+  // read header (serial_net_t) into s_net
+  fread(&s_net, sizeof(serial_net_t), 1, file_ptr);
+
+  // read layer sizes
+  int *hidden_layers_sizes = malloc(s_net.hidden_layers_count *
+                                    sizeof(int));
+  fread(hidden_layers_sizes, sizeof(int),
+        s_net.hidden_layers_count, file_ptr);
+
+  // read layer activation enums
+  activation_e *activations = malloc(s_net.hidden_layers_count *
+                                     sizeof(activation_e));
+  fread(activations, sizeof(activation_e),
+        s_net.hidden_layers_count, file_ptr);
+
+
+  create_easy_net(easy_net, s_net.hidden_layers_count,
+                  hidden_layers_sizes, s_net.input_layer_size,
+                  activations, s_net.final_normal_training,
+                  s_net.final_normal_answer,
+                  s_net.start_normal, s_net.loss,
+                  s_net.learning_rate,
+                  s_net.average_across_nodes);
+
+  free(hidden_layers_sizes);
+  free(activations);
+
+  // read layer biases
+  for (int i = 0; i < s_net.hidden_layers_count; i++) {
+    neuron_t *layer = easy_net->net->hidden_layers[i];
+    for (int j = 0; j < easy_net->net->hidden_layers_sizes[i]; j++) {
+      fread(&(layer[j].bias), sizeof(float), 1, file_ptr);
+    }
+  }
+
+  // read layer weights
+  for (int i = 0; i < s_net.hidden_layers_count; i++) {
+    neuron_t *layer = easy_net->net->hidden_layers[i];
+    for (int j = 0; j < easy_net->net->hidden_layers_sizes[i]; j++) {
+      fread(layer[j].weights, sizeof(float),
+            layer[j].previous_count, file_ptr);
+    }
+  }
+}

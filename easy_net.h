@@ -36,6 +36,9 @@ extern void delete_easy_batch(easy_net_t *);
 extern void prepare_threads_easy(easy_net_t *, int);
 extern void update_mirrors_easy(easy_net_t *);
 extern void train_batch_easy(easy_net_t *, float **, float **, int);
+extern void compiled_from_easy(net_compiled_t *, easy_net_t *);
+extern void write_easy_to_file(FILE *file_ptr, easy_net_t *);
+extern void read_file_to_easy(FILE *, easy_net_t *);
 
 
 #endif
