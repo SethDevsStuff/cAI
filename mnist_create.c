@@ -13,7 +13,7 @@ int main() {
   easy_net_t easy_net = { 0 };
 
   int layer_count = 3;
-  int layer_sizes[] = {1024, 512, 10};
+  int layer_sizes[] = {256, 256, 10};
   int input_layer_size = 784;
   activation_e activations[] = {RELU, RELU, IDENTITY};
 

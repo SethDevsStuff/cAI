@@ -21,7 +21,7 @@ int main() {
   read_file_to_easy(model_ptr, &easy_net);
 
   // --------------- testing ------------
-  int test_size = 1000;
+  int test_size = 10000;
   int correct = 0;
 
   int number = 0;
