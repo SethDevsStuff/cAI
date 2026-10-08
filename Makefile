@@ -1,15 +1,26 @@
 CC = gcc
-CFLAGS = -lm -pthread
+CFLAGS = -Wall -Werror
+LIBRARIES = -lm -pthread
 
 SRC = net.c neuron.c neural_functions.c serial_net.c easy_net.c mnist.c
 
-TARGET = mnist_create mnist_train mnist_test
+SRC_DIR = src
+INC_DIR = include
+OBJ_DIR = obj
+OUTPUT_DIR = lib
 
-all: $(TARGET)
+SRCS = $(wildcard $(SRC_DIR)/*.c)
 
+OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-% : $(SRC) %.c
-	$(CC) -o $@ $^ $(CFLAGS)
+TARGET = $(OUTPUT_DIR)/c_ai.a
 
-./%.o : ./%.c
+all:
+	@echo $(SRCS)
+	@echo $(OBJS)
+
+$(TARGET): $(OBJS)
+	ar rcs $@ $^
+
+./obj/%.o : SRC_DIR/%.c
 	$(CC) -c -o $@ $<
