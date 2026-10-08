@@ -25,10 +25,10 @@ void delete_neurons(neuron_t *neurons, int neuron_count) {
   if (!neurons) return;
   for (int i = 0; i < neuron_count; i++) {
     // ensures no null dereference due to failed malloc of neuron
-    if (neurons + i) {
-      free(neurons[i].weights);
-      neurons[i].weights = NULL;
-    }
+    //if (neurons + i) {
+	  free(neurons[i].weights);
+	  neurons[i].weights = NULL;
+    //}
   }
   free(neurons);
 }

@@ -178,7 +178,8 @@ void train_batch_easy(easy_net_t *easy_net, float **inputs,
     inputs_head = inputs_head + tw->inputs_size;
     expecteds_head = expecteds_head + tw->inputs_size;
 
-    int ret = pthread_create(&tw->thread, NULL, &thread_function, tw);
+    //int ret = pthread_create(&tw->thread, NULL, &thread_function, tw);
+    pthread_create(&tw->thread, NULL, &thread_function, tw);
   }
 
   for (int i = 0; i < easy_net->thread_count; i++) {

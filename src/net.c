@@ -326,7 +326,9 @@ void push_to_output_training(net_t *net) {
   int n = net->output_layer_size;
 
   float *y_arr = malloc(n * sizeof(float));
+  if (!y_arr) goto cleanup;
   float *normal_arr = malloc(n * sizeof(float));
+  if (!normal_arr) goto cleanup;
 
   neuron_t *last_layer = net->hidden_layers[net->hidden_layers_count - 1];
 

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Werror
+CFLAGS = -Wall -Werror -Iinclude
 LIBRARIES = -lm -pthread
 
 SRC = net.c neuron.c neural_functions.c serial_net.c easy_net.c mnist.c
@@ -13,14 +13,28 @@ SRCS = $(wildcard $(SRC_DIR)/*.c)
 
 OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-TARGET = $(OUTPUT_DIR)/c_ai.a
+INCLUDES = $(wildcard $(INC_DIR)/*.h)
 
-all:
-	@echo $(SRCS)
-	@echo $(OBJS)
+TARGET = $(OUTPUT_DIR)/libc_ai.a
+
+
+INSTALL_DIR = /usr/lib
+INSTALL_INC_DIR = /usr/include
+
+INSTALL_INC_LIST = $(patsubst $(INC_DIR)/%, $(INSTALL_INC_DIR)/%, $(INCLUDES))
+
+all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	ar rcs $@ $^
 
-./obj/%.o : SRC_DIR/%.c
-	$(CC) -c -o $@ $<
+./obj/%.o : $(SRC_DIR)/%.c
+	$(CC) -c -o $@ $< $(CFLAGS) $(LIBRARIES)
+
+install: $(TARGET)
+	cp $(TARGET) $(INSTALL_DIR)
+	cp $(INCLUDES) $(INSTALL_INC_DIR)
+
+uninstall:
+	rm $(INSTALL_DIR)/libc_ai.a
+	rm $(INSTALL_INC_LIST)
