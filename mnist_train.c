@@ -23,7 +23,7 @@ int main() {
 
   int input_layer_size = easy_net.net->input_layer_size;
 
-  int epochs = 10;
+  int epochs = 3;
   int batch_size = 64;
   int thread_count = 4;
   int training_size = 50000;
