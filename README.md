@@ -18,23 +18,27 @@ turning back while you still can.
 
 <mark>This installation is for GNU/Linux specifically</mark>
 
-First, clone the repo: 
+First, clone the repo:
+
 `
 git clone https://github.com/SethDevsStuff/cAI.git
 `
 
-Next, build the project with GNU make: 
+Next, build the project with GNU make:
+
 `
 make
 `
 
-Finally install the library to your /usr/lib directories again using GNU make: 
+Finally install the library to your /usr/lib directories again using GNU make:
+
 `
 sudo make install
 `
 
 ### Uninstalling
-Once you've realized your mistakes, uninstalling the library is very easy. From the project directory: 
+Once you've realized your mistakes, uninstalling the library is very easy. From the project directory:
+
 `
 sudo make uninstall
 `
