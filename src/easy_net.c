@@ -187,7 +187,56 @@ void train_batch_easy(easy_net_t *easy_net, float **inputs,
 
     pthread_join(tw->thread, NULL);
   }
-  fflush(NULL);
+  /*
+  printf("g_batch layer 0 neuron 0 grad: %f\n", 
+         easy_net->batch->hidden_layers[0][0].weights[0]);
+  */
+  update_net_from_batch(easy_net->net, easy_net->batch, batch_size);
+}
+
+void train_one_hot_batch_easy(easy_net_t *easy_net, int **one_hots,
+                              int *one_hots_sizes,
+                              float **expecteds, int batch_size) {
+  reset_batch_values(easy_net->batch);
+  update_mirrors_easy(easy_net);
+
+  int inputs_per_thread = batch_size / easy_net->thread_count;
+  int remainder = batch_size % easy_net->thread_count;
+
+  float **expecteds_head = expecteds;
+  int **one_hots_head = one_hots;
+  int *one_hots_sizes_head = one_hots_sizes;
+
+  thread_wrapper_t *tw = NULL;
+  for (int i = 0; i < easy_net->thread_count; i++) {
+    tw = easy_net->t_wrappers + i;
+
+    tw->inputs_size = inputs_per_thread;
+
+    if (remainder) {
+      tw->inputs_size += 1;
+      remainder -= 1;
+    }
+
+    //tw->inputs = inputs_head;
+    tw->one_hots = one_hots_head;
+    tw->one_hots_sizes = one_hots_sizes_head;
+    tw->expecteds = expecteds_head;
+
+    expecteds_head = expecteds_head + tw->inputs_size;
+    one_hots_head = one_hots_head + tw->inputs_size;
+    one_hots_sizes_head += tw->inputs_size;
+
+
+    //nt ret = pthread_create(&tw->thread, NULL, &thread_function, tw);
+    pthread_create(&tw->thread, NULL, &one_hot_thread_function, tw);
+  }
+
+  for (int i = 0; i < easy_net->thread_count; i++) {
+    tw = easy_net->t_wrappers + i;
+
+    pthread_join(tw->thread, NULL);
+  }
   /*
   printf("g_batch layer 0 neuron 0 grad: %f\n", 
          easy_net->batch->hidden_layers[0][0].weights[0]);

@@ -248,7 +248,7 @@ void reset_batch_values(net_t *net) {
  */
 
 void add_gradient_to_batch(net_t *from, net_t *to) {
-  pthread_mutex_lock(&to->lock);
+  //pthread_mutex_lock(&to->lock);
   for (int i = 0; i < from->hidden_layers_count; i++) {
     neuron_t *from_layer = from->hidden_layers[i];
     neuron_t *to_layer = to->hidden_layers[i];
@@ -264,7 +264,27 @@ void add_gradient_to_batch(net_t *from, net_t *to) {
       }
     }
   }
-  pthread_mutex_unlock(&to->lock);
+  //pthread_mutex_unlock(&to->lock);
+}
+
+void add_most_gradient_to_batch(net_t *from, net_t *to) {
+  // adds all but first layer of weights to the batch
+  // allows for optimizing with one hot input
+  for (int i = 1; i < from->hidden_layers_count; i++) {
+    neuron_t *from_layer = from->hidden_layers[i];
+    neuron_t *to_layer = to->hidden_layers[i];
+
+    for (int j = 0; j < from->hidden_layers_sizes[i]; j++) {
+      neuron_t *to_neuron = to_layer + j;
+
+      to_neuron->local_gradient += from_layer[j].local_gradient;
+
+      for (int k = 0; k < to_neuron->previous_count; k++) {
+        to_neuron->weights[k] += from_layer[j].previous[k].y *
+          from_layer[j].local_gradient;
+      }
+    }
+  }
 }
 
 void add_batch_to_batch(net_t *from, net_t *to) {
@@ -458,7 +478,8 @@ void first_back_prop(net_t *net, float *expecteds) {
 */
 
 void layer_back_prop(neuron_t *layer, int layer_n,
-                     neuron_t *layer_previous, int layer_previous_n) {
+                     neuron_t *layer_previous,
+                     int layer_previous_n) {
   // loop through every neuron in current layer
   for (int i = 0; i < layer_n; i++) {
     neuron_t *neuron = layer + i;
@@ -714,6 +735,86 @@ void *thread_function(void *ptr) {
     //printf("%f\n", loss);
     full_back_prop(mirror, expecteds[i]);
     add_gradient_to_batch(mirror, batch);
+  }
+
+  add_batch_to_batch(batch, g_batch);
+
+  delete_net(batch);
+
+  return NULL;
+}
+
+void *one_hot_thread_function(void *ptr) {
+  thread_wrapper_t *tw = (thread_wrapper_t *) ptr;
+  net_t *mirror = tw->mirror;
+  net_t *g_batch = tw->batch;
+  net_t *batch = create_batch_net(g_batch);
+  float **expecteds = tw->expecteds;
+  int **one_hots = tw->one_hots;
+  int *one_hots_sizes = tw->one_hots_sizes;
+  int inputs_size = tw->inputs_size;
+
+  // loop through inputs
+  for (int i = 0; i < inputs_size; i++) {
+    neuron_t *in_layer = mirror->input_layer;
+    int in_size = mirror->input_layer_size;
+    // reset input values to 0.0
+    for (int j = 0; j < in_size; j++) {
+      neuron_t *n = in_layer + j;
+      n->x = 0.0;
+      n->y = 0.0;
+    }
+    for (int j = 0; j < one_hots_sizes[i]; j++) {
+      int index = one_hots[i][j];
+      neuron_t *n = in_layer + index;
+      n->x += 1.0;
+      n->y += 1.0;
+    }
+    //input_in_net(mirror, inputs[i]);
+    calculate_hidden(mirror);
+    push_to_output_training(mirror);
+    full_back_prop(mirror, expecteds[i]);
+    //first_back_prop(mirror, expecteds[i]);
+
+    /*
+    // loops through every hidden layer except the last one
+    // and the first one
+    for (int j = layers_n - 2; j > 0; j--) {
+      layer_back_prop(mirror->hidden_layers[j],
+                      mirror->hidden_layers_sizes[j],
+                      mirror->hidden_layers[j + 1],
+                      mirror->hidden_layers_sizes[j + 1]);
+    }
+
+    // loop through all input neurons with non-zero
+    // values
+    neuron_t *layer = mirror->hidden_layers[0];
+    int layer_size = mirror->hidden_layers_sizes[0];
+    for (int j = 0; j < one_hots_sizes[i]; j++) {
+      int index = one_hots[i][j];
+      neuron_t *in_n = in_layer + index;
+      in_n->local_gradient = 0.0;
+      for (int k = 0; k < layer_size; k++) {
+        neuron_t *layer_n = layer + k;
+        in_n->local_gradient += layer_n->local_gradient;
+      }
+    }
+    */
+    //add_gradient_to_batch(mirror, batch);
+    add_most_gradient_to_batch(mirror, batch);
+
+    neuron_t *first_m = mirror->hidden_layers[0];
+    neuron_t *first_b = batch->hidden_layers[0];
+    int first_size = mirror->hidden_layers_sizes[0];
+    for (int j = 0; j < first_size; j++) {
+      neuron_t *neuron_m = first_m + j;
+      neuron_t *neuron_b = first_b + j;
+      neuron_b->local_gradient += neuron_m->local_gradient;
+      for (int k = 0; k < one_hots_sizes[i]; k++) {
+        int index = one_hots[i][k];
+        neuron_b->weights[index] += neuron_m->local_gradient;
+      }
+    }
   }
 
   add_batch_to_batch(batch, g_batch);

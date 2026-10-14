@@ -59,6 +59,8 @@ typedef struct thread_wrapper {
   net_t *batch;
   float **inputs;
   float **expecteds;
+  int **one_hots;
+  int *one_hots_sizes;
   pthread_t thread;
   int inputs_size;
 } thread_wrapper_t;
@@ -80,6 +82,7 @@ extern void delete_net(net_t *);
 extern net_t *create_batch_net(net_t *);
 extern void reset_batch_values(net_t *);
 extern void add_gradient_to_batch(net_t *, net_t *);
+extern void add_most_gradient_to_batch(net_t *, net_t *);
 extern void add_batch_to_batch(net_t *, net_t *);
 extern void init_bias(net_t *, float);
 extern void init_weights(net_t *, float (**)(int, int));
@@ -99,6 +102,7 @@ extern net_t *create_mirror_net(net_t *);
 extern void delete_mirror_net(net_t *);
 extern void update_mirror(net_t *, net_t *);
 extern void *thread_function(void *);
+extern void *one_hot_thread_function(void *);
 extern float **create_batch_arr(int, int);
 
 #endif

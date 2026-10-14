@@ -33,6 +33,10 @@ $(TARGET): $(OBJS)
 	mkdir -p $(OBJ_DIR)
 	$(CC) -c -o $@ $< $(CFLAGS) $(LIBRARIES)
 
+clean: $(TARGET)
+	rm $(OBJ_DIR)/*.o
+	rm $(OUTPUT_DIR)/*
+
 install: $(TARGET)
 	cp $(TARGET) $(INSTALL_DIR)
 	cp $(INCLUDES) $(INSTALL_INC_DIR)
